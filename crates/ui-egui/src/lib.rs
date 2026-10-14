@@ -684,6 +684,8 @@ pub struct PdfCraftApp {
     /// The custom stamp library, and the stamp being created.
     pub custom_stamps: Vec<stamps_ui::CustomStamp>,
     pub stamp_draft: stamps_ui::StampDraft,
+    /// Scroll the Fill & Sign panel to its stamps the next time it is drawn (Add a stamp).
+    pub(crate) reveal_stamps: bool,
     /// PDF Optimizer choices.
     pub optimize_draft: OptimizeDraft,
     /// The running optimization (Optimize PDF ▸ Advanced optimization).
@@ -983,6 +985,7 @@ impl PdfCraftApp {
             image_import: None,
             custom_stamps: Vec::new(),
             stamp_draft: Default::default(),
+            reveal_stamps: false,
             optimize_draft: OptimizeDraft::default(),
             optimize_run: None,
             progress_notice: None,
@@ -2012,15 +2015,24 @@ impl PdfCraftApp {
     /// workspace, so opening its panel also opens the page grid (without toggling it off).
     pub(crate) fn select_tool(&mut self, id: &'static str) {
         self.left = LeftPanel::Tool(id);
+        self.reveal_stamps = false;
         self.reveal_tools();
         if let Some(view) = self.active.and_then(|i| self.views.get_mut(i)) {
             view.organize = id == "organize";
         }
     }
 
+    /// Add a stamp: the stamps are a section of Fill & Sign, so open that panel scrolled to them.
+    pub(crate) fn open_stamps(&mut self) {
+        self.left = LeftPanel::Tool("fill_sign");
+        self.reveal_tools();
+        self.reveal_stamps = true;
+    }
+
     /// Select the workspace and its matching tool panel, just like the mode bar.
     pub(crate) fn select_mode(&mut self, mode: Mode) {
         self.mode = mode;
+        self.reveal_stamps = false;
         self.reveal_tools();
         if let Some(view) = self.active.and_then(|i| self.views.get_mut(i)) {
             view.organize = false;
@@ -2357,6 +2369,11 @@ impl PdfCraftApp {
             }
             ("date-format", _) => self.session.set_date_format(value)?,
             ("date-language", _) => self.session.set_date_language(Some(value).filter(|v| *v != "auto"))?,
+            // Add a stamp became part of Fill & Sign; its old id still opens the stamps there.
+            ("tool", _) if value == "stamp" => {
+                self.select_tool("fill_sign");
+                self.reveal_stamps = true;
+            }
             ("tool", _) => {
                 let g = pdfcraft_engine::catalog::group(value).ok_or_else(|| format!("unknown tool {value}"))?;
                 self.select_tool(g.id);

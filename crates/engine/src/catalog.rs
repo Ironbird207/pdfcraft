@@ -88,21 +88,26 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
         hue: PURPLE,
         badge: None,
         availability: Ready,
-        sections: &[ToolSection {
-            title: "Fill",
-            items: &[
-                item("Add text", "type", "sign.fill.text", Ready),
-                item("Checkmark", "check", "sign.fill.check", Ready),
-                item("Cross", "x", "sign.fill.cross", Ready),
-                item("Dot", "circle-dot", "sign.fill.dot", Ready),
-                item("Line", "minus", "sign.fill.line", Ready),
-                item("Date", "clock-3", "sign.fill.date", Ready),
-                item("Signature", "signature", "sign.fill.signature", Ready),
-                item("Initials", "signature", "sign.fill.initials", Ready),
-                item("Change signature", "signature", "sign.fill.signature.change", Ready),
-                item("Change initials", "signature", "sign.fill.initials.change", Ready),
-            ],
-        }],
+        // Acrobat lists Add a stamp as its own tool; PdfCraft keeps the stamps here, beside the
+        // marks and signatures they are placed with.
+        sections: &[
+            ToolSection {
+                title: "Fill",
+                items: &[
+                    item("Add text", "type", "sign.fill.text", Ready),
+                    item("Checkmark", "check", "sign.fill.check", Ready),
+                    item("Cross", "x", "sign.fill.cross", Ready),
+                    item("Dot", "circle-dot", "sign.fill.dot", Ready),
+                    item("Line", "minus", "sign.fill.line", Ready),
+                    item("Date", "clock-3", "sign.fill.date", Ready),
+                    item("Signature", "signature", "sign.fill.signature", Ready),
+                    item("Initials", "signature", "sign.fill.initials", Ready),
+                    item("Change signature", "signature", "sign.fill.signature.change", Ready),
+                    item("Change initials", "signature", "sign.fill.initials.change", Ready),
+                ],
+            },
+            ToolSection { title: "Stamps", items: &[item("Stamp palette", "stamp", "comment.stamp", Ready)] },
+        ],
     },
     ToolGroup {
         id: "edit",
@@ -226,7 +231,7 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                     item("Line", "minus", "comment.line", Ready),
                     item("Arrow", "move-right", "comment.arrow", Ready),
                     item("Cloud", "cloud", "comment.cloud", Planned("M5")),
-                    item("Stamp", "stamp", "comment.stamp", Planned("M5")),
+                    item("Stamp", "stamp", "comment.stamp", Ready),
                 ],
             },
             ToolSection {
@@ -352,15 +357,6 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                 ],
             },
         ],
-    },
-    ToolGroup {
-        id: "stamp",
-        label: "Add a stamp",
-        icon: "stamp",
-        hue: PURPLE,
-        badge: None,
-        availability: Ready,
-        sections: &[ToolSection { title: "Stamps", items: &[item("Stamp palette", "stamp", "comment.stamp", Ready)] }],
     },
     ToolGroup {
         id: "certificate",

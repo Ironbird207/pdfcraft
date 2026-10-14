@@ -1670,8 +1670,8 @@ milestone = "M4"
 status = "shipped"
 commands = []
 tools = []
-evidence = ["crates/ui-egui/tests/ui.rs::every_catalog_tool_is_listed_after_view_more", "crates/engine/src/commands.rs::every_ready_catalogue_item_is_a_registered_command"]
-notes = ""
+evidence = ["crates/ui-egui/tests/ui.rs::every_catalog_tool_is_listed_after_view_more", "crates/engine/src/commands.rs::every_ready_catalogue_item_is_a_registered_command", "crates/ui-egui/tests/stamps.rs::stamps_are_a_section_of_fill_and_sign", "crates/ui-egui/tests/stamps.rs::all_tools_does_not_open_where_the_stamps_were_scrolled"]
+notes = "Beyond Acrobat's layout: Add a stamp is the Stamps section of Fill & Sign rather than a tool of its own. All tools and each tool panel keep their own scroll positions"
 
 [[feature]]
 id = "view.command-palette"
@@ -4052,8 +4052,8 @@ milestone = "M5"
 status = "shipped"
 commands = ["comment.stamp"]
 tools = ["comment_add"]
-evidence = ["crates/annot/src/tests.rs::stamps_draw_their_label_and_by_line", "crates/ui-egui/tests/stamps.rs::choosing_and_placing_stamps", "crates/automation/tests/automation.rs::stamps_through_tools", "crates/engine/src/tests.rs::rubber_stamps_point_left_as_displayed_on_rotated_pages"]
-notes = "12 standard business stamps in PdfCraft's own design; ISO 32000 stamp names where defined. A stamp placed on a rotated page reads upright as the page is displayed (#1398)"
+evidence = ["crates/annot/src/tests.rs::stamps_draw_their_label_and_by_line", "crates/ui-egui/tests/stamps.rs::choosing_and_placing_stamps", "crates/automation/tests/automation.rs::stamps_through_tools", "crates/engine/src/tests.rs::rubber_stamps_point_left_as_displayed_on_rotated_pages", "crates/ui-egui/tests/stamps.rs::stamps_are_a_section_of_fill_and_sign", "crates/ui-egui/tests/stamps.rs::the_quick_bar_fill_and_sign_button_leads_to_the_stamps", "crates/ui-egui/tests/stamps.rs::the_stamp_palette_row_is_left_out_where_the_tool_panel_cannot_show", "crates/ui-egui/tests/stamps.rs::a_scroll_to_the_stamps_that_never_showed_does_not_move_a_later_fill_and_sign", "crates/ui-egui/tests/stamps.rs::stamps_stay_inside_a_narrow_fill_and_sign_panel"]
+notes = "12 standard business stamps in PdfCraft's own design; ISO 32000 stamp names where defined. A stamp placed on a rotated page reads upright as the page is displayed (#1398). The palette is the Stamps section of Fill & Sign, after its marks and signatures (Acrobat has a separate Add a stamp tool): Add a stamp (comment.stamp), Add comments ▸ Stamp, --tool stamp and (outside Read mode and full screen, which show no tool panel) the quick bar's Fill & Sign pop-out open the panel scrolled to it, and a stamp being placed lights that quick-bar button"
 
 [[feature]]
 id = "comment.stamps-sign-here"
@@ -5292,8 +5292,8 @@ milestone = "M5"
 status = "shipped"
 commands = ["comment.flatten"]
 tools = ["doc_save", "doc_flatten"]
-evidence = ["crates/edit/src/tests.rs::fill_sign_flatten_bakes_marks_keeps_other_comments_and_does_not_reuse_pcfl0", "crates/engine/src/tests.rs::flattening_fill_and_sign_keeps_other_comments_fields_and_undoes", "crates/engine/src/tests.rs::flattening_fill_and_sign_is_refused_without_permission_to_change", "crates/automation/tests/automation.rs::saving_with_flatten_fill_sign_bakes_marks_and_leaves_other_comments", "crates/ui-egui/tests/fill_sign.rs::saving_flattens_fill_and_sign_only_when_the_preference_is_on"]
-notes = "Preferences ▸ Fill & Sign, and doc_save flatten_fill_sign, bake text, marks and signatures into the page. The option defaults off, so a normal save leaves them editable. Other comments and form fields stay. Flatten comments still flattens every comment."
+evidence = ["crates/edit/src/tests.rs::fill_sign_flatten_bakes_marks_keeps_other_comments_and_does_not_reuse_pcfl0", "crates/engine/src/tests.rs::flattening_fill_and_sign_keeps_other_comments_fields_and_undoes", "crates/engine/src/tests.rs::flattening_fill_and_sign_is_refused_without_permission_to_change", "crates/automation/tests/automation.rs::saving_with_flatten_fill_sign_bakes_marks_and_leaves_other_comments", "crates/ui-egui/tests/fill_sign.rs::saving_flattens_fill_and_sign_only_when_the_preference_is_on", "crates/ui-egui/tests/stamps.rs::flattening_fill_and_sign_on_save_keeps_stamps_as_comments"]
+notes = "Preferences ▸ Fill & Sign, and doc_save flatten_fill_sign, bake text, marks and signatures into the page. The option defaults off, so a normal save leaves them editable. Other comments, including stamps placed from Fill & Sign ▸ Stamps, and form fields stay. Flatten comments still flattens every comment."
 
 [[feature]]
 id = "form.autofill-profile"

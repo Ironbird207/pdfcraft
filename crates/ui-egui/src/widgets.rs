@@ -276,6 +276,15 @@ pub fn section_title(ui: &mut egui::Ui, text: &str) {
     ui.add_space(2.0);
 }
 
+/// A heading for one group inside a section (Fill & Sign ▸ Stamps ▸ Dynamic), quieter than
+/// [`section_title`] so the groups read as parts of it. `text` is already translated.
+pub fn subsection_title(ui: &mut egui::Ui, text: &str) {
+    let t = Tokens::get(ui.ctx());
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new(text).font(theme::medium(12.0)).color(t.text_muted));
+    ui.add_space(1.0);
+}
+
 /// Paint one line of `text` left-aligned and vertically centred on `pos`, cut with "…" so it is
 /// at most `max_width` wide: a long file name or path stays inside its row (#425).
 pub fn row_text(ui: &egui::Ui, pos: egui::Pos2, text: impl Into<String>, font: egui::FontId, color: Color32, max_width: f32) {

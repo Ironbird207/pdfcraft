@@ -1,6 +1,6 @@
 # UI and interaction parity
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-11 · **Change:** minor (column select #740, multi-object move #844, Shift-⌘-G #810 fixed) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-13 · **Change:** minor (stamps are a section of Fill & Sign) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
 
 How PdfCraft's tools, panels, shortcuts and feel compare with Acrobat Pro's current interface (the
 2023+ "new Acrobat": All tools pane on the left, quick-action toolbar, Home view). Behaviour is
@@ -25,7 +25,7 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 | Element | Acrobat | PdfCraft | Status |
 |---|---|---|---|
 | Home view (recent files, recommended tools) | yes | yes | shipped |
-| All tools pane, tool sets | yes | yes, with milestone badges | shipped |
+| All tools pane, tool sets | yes | yes, with milestone badges; Add a stamp is the Stamps section of Fill & Sign rather than a tool of its own | shipped |
 | Quick-action toolbar, customisable | yes | fixed | partial (`view.customize-quick-tools` planned) |
 | Command search | "Search tools" | command palette (⌘K), matches translated and English labels | shipped |
 | Document tabs | yes | yes, with unsaved marker | shipped |
@@ -81,5 +81,6 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-13 | minor | Add a stamp merged into Fill & Sign as its Stamps section; `comment.stamp`, Add comments ▸ Stamp, `--tool stamp` and the quick bar's Fill & Sign pop-out (outside Read mode and full screen) open the panel at the stamps; each tool panel keeps its own scroll position |
 | 2026-10-11 | minor | Column select shipped (#740, PR #765); several objects move together on one page (#844, PR #907); Shift-⌘-G goes back (#810, PR #835) |
 | 2026-10-10 | major | Created from the command registry, automation tools, the View area of the checklist and open UI issues |

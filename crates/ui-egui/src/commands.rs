@@ -466,10 +466,7 @@ impl PdfCraftApp {
                 self.apply_edit(Edit::SetTabOrder { pages: (0..n).collect(), order });
             }
             "comment.import" | "form.import_data" => self.import_data_dialog(),
-            "comment.stamp" => {
-                self.left = crate::LeftPanel::Tool("stamp");
-                self.reveal_tools();
-            }
+            "comment.stamp" => self.open_stamps(),
             "comment.export" => self.export_data_dialog(true, false),
             "comment.summarize" => self.dialog = Some(Dialog::SummarizeComments),
             "sign.digital" | "sign.certify" => {

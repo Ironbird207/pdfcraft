@@ -3887,6 +3887,31 @@ fn notice_bar(ui: &mut egui::Ui, t: &Tokens, icon: &str, icon_color: Color32, te
     });
 }
 
+/// One row of the quick bar's Fill & Sign pop-out: an icon and a label, with a check when `on`.
+fn fill_flyout_row(ui: &mut egui::Ui, t: &Tokens, icon: &str, label: &str, on: bool) -> egui::Response {
+    let (row, click) = ui.allocate_exact_size(vec2(180.0, 28.0), Sense::click());
+    let press = theme::Press::track(ui, &click);
+    press.wash(ui, row, 4, on);
+    let body = row.translate(press.offset());
+    icons::paint(ui, Rect::from_min_size(body.min + vec2(8.0, 6.0), vec2(16.0, 16.0)), icon, 16.0, t.text);
+    let reserve = if on { 28.0 } else { 8.0 };
+    crate::widgets::paint_left(
+        ui,
+        body.left_center() + vec2(34.0, 0.0),
+        label,
+        theme::regular(13.0),
+        t.text,
+        (row.width() - 34.0 - reserve).max(0.0),
+    );
+    if on {
+        icons::paint(ui, Rect::from_min_size(body.right_top() + vec2(-24.0, 7.0), vec2(14.0, 14.0)), "check", 14.0, t.accent);
+    }
+    let click = theme::hand(click);
+    let info = label.to_string();
+    click.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, info.clone()));
+    click
+}
+
 /// The floating quick-action bar at the left edge of the document area.
 fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
@@ -3961,30 +3986,28 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                                 }
                             });
                     }
-                    // Fill & Sign ▸ (text, marks, date, signature).
+                    // Fill & Sign ▸ (text, marks, date, signature, stamps).
                     let current_fill = match app.quick_tool {
                         QuickTool::Fill(f) => Some(f),
                         _ => None,
                     };
+                    // A stamp chosen from Fill & Sign ▸ Stamps belongs to this button too.
+                    let stamping = matches!(app.quick_tool, QuickTool::Stamp(_) | QuickTool::CustomStamp(_));
+                    let active = current_fill.is_some() || stamping;
                     let shown = current_fill.unwrap_or(crate::fill_sign::FillTool::Text);
-                    let resp = icons::button(
-                        ui,
-                        if current_fill.is_some() { shown.icon() } else { "pen-line" },
-                        32.0,
-                        current_fill.is_some(),
-                        tl!("Fill & Sign"),
-                    );
+                    let icon = match current_fill {
+                        Some(tool) => tool.icon(),
+                        None if stamping => "stamp",
+                        None => "pen-line",
+                    };
+                    let resp = icons::button(ui, icon, 32.0, active, tl!("Fill & Sign"));
                     let r = resp.rect;
                     let tri = [r.right_bottom() + vec2(-4.0, -4.0), r.right_bottom() + vec2(-9.0, -4.0), r.right_bottom() + vec2(-4.0, -9.0)];
-                    ui.painter().add(egui::Shape::convex_polygon(
-                        tri.to_vec(),
-                        if current_fill.is_some() { t.accent } else { t.text_faint },
-                        Stroke::NONE,
-                    ));
-                    if resp.clicked() && current_fill.is_none() {
+                    ui.painter().add(egui::Shape::convex_polygon(tri.to_vec(), if active { t.accent } else { t.text_faint }, Stroke::NONE));
+                    if resp.clicked() && !active {
                         app.execute(shown.command());
                     }
-                    let open = (resp.clicked() && current_fill.is_some()) || resp.secondary_clicked();
+                    let open = (resp.clicked() && active) || resp.secondary_clicked();
                     egui::Popup::menu(&resp)
                         .open_memory(open.then_some(egui::SetOpenCommand::Toggle))
                         .align(egui::RectAlign::RIGHT_START)
@@ -3994,34 +4017,7 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                                 if matches!(tool, crate::fill_sign::FillTool::Signature | crate::fill_sign::FillTool::Initials) {
                                     continue;
                                 }
-                                let on = current_fill == Some(tool);
-                                let (row, click) = ui.allocate_exact_size(vec2(180.0, 28.0), Sense::click());
-                                let press = theme::Press::track(ui, &click);
-                                press.wash(ui, row, 4, on);
-                                let body = row.translate(press.offset());
-                                icons::paint(ui, Rect::from_min_size(body.min + vec2(8.0, 6.0), vec2(16.0, 16.0)), tool.icon(), 16.0, t.text);
-                                let reserve = if on { 28.0 } else { 8.0 };
-                                crate::widgets::paint_left(
-                                    ui,
-                                    body.left_center() + vec2(34.0, 0.0),
-                                    tl!(tool.label()),
-                                    theme::regular(13.0),
-                                    t.text,
-                                    (row.width() - 34.0 - reserve).max(0.0),
-                                );
-                                if on {
-                                    icons::paint(
-                                        ui,
-                                        Rect::from_min_size(body.right_top() + vec2(-24.0, 7.0), vec2(14.0, 14.0)),
-                                        "check",
-                                        14.0,
-                                        t.accent,
-                                    );
-                                }
-                                let click = theme::hand(click);
-                                let info = tl!(tool.label()).to_string();
-                                click.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, info.clone()));
-                                if click.clicked() {
+                                if fill_flyout_row(ui, &t, tool.icon(), tl!(tool.label()), current_fill == Some(tool)).clicked() {
                                     app.execute(tool.command());
                                     ui.close();
                                 }
@@ -4030,6 +4026,15 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                             if let Some(command) = crate::fill_sign::signature_entries(ui, app, &t) {
                                 app.execute(command);
                                 ui.close();
+                            }
+                            // The stamps are too many for a pop-out: this opens them in the tool panel,
+                            // which Read mode and full screen don't show.
+                            if app.mode != crate::Mode::Read && !app.full_screen {
+                                ui.separator();
+                                if fill_flyout_row(ui, &t, "stamp", tl!("Stamp palette"), stamping).clicked() {
+                                    app.execute("comment.stamp");
+                                    ui.close();
+                                }
                             }
                         });
                     if matches!(current_fill, Some(crate::fill_sign::FillTool::Text | crate::fill_sign::FillTool::Date)) {

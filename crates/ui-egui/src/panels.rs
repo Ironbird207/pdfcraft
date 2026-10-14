@@ -8,7 +8,7 @@ use pdfcraft_render::{DocInfo, FieldKind, OutlineItem};
 use crate::theme::{self, Tokens};
 use crate::{LeftPanel, PdfCraftApp, RightPanel, icons, widgets};
 
-const COLLAPSED_TOOLS: usize = 14;
+const COLLAPSED_TOOLS: usize = 13;
 
 fn hue(g: &ToolGroup) -> Color32 {
     Color32::from_rgb(g.hue[0], g.hue[1], g.hue[2])
@@ -16,6 +16,10 @@ fn hue(g: &ToolGroup) -> Color32 {
 
 pub fn left_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A scroll to the stamps is for the Fill & Sign panel it opened; any other panel drops it.
+    if app.left != LeftPanel::Tool("fill_sign") {
+        app.reveal_stamps = false;
+    }
     egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin { left: 14, right: 10, top: 12, bottom: 10 }).stroke(Stroke::new(1.0, t.divider)).show(
         ui,
         |ui| match app.left {
@@ -55,7 +59,7 @@ fn all_tools(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
     if close {
         app.left_open = false;
     }
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+    egui::ScrollArea::vertical().id_salt("all-tools").auto_shrink([false, false]).show(ui, |ui| {
         let shown = if app.all_tools_expanded { TOOL_GROUPS.len() } else { COLLAPSED_TOOLS.min(TOOL_GROUPS.len()) };
         for g in &TOOL_GROUPS[..shown] {
             if tool_row(ui, t, g).clicked() {
@@ -159,11 +163,6 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
         crate::measure_ui::panel(app, ui, t);
         return;
     }
-    // Add a stamp: the palette.
-    if g.id == "stamp" {
-        stamp_palette(app, ui, t);
-        return;
-    }
     // Prepare a form: Preview fills the form as a reader would; Edit goes back.
     if g.id == "form" {
         ui.horizontal(|ui| {
@@ -197,11 +196,23 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
     let footer = g.id == "redact";
     let marks = if footer { app.active_ids().and_then(|(_, id)| app.session.get(id)).map_or(0, |d| d.redaction_marks()) } else { 0 };
     let list_h = if footer { (ui.available_height() - 52.0).max(80.0) } else { ui.available_height() };
-    egui::ScrollArea::vertical().auto_shrink([false, false]).max_height(list_h).show(ui, |ui| {
+    let fill_sign = g.id == "fill_sign";
+    // Each tool keeps its own scroll position: one shared with All tools would open a long panel
+    // part way down, or All tools where the stamps were.
+    egui::ScrollArea::vertical().id_salt(("tool-panel", g.id)).auto_shrink([false, false]).max_height(list_h).show(ui, |ui| {
+        let width = ui.available_width();
         for s in g.sections {
+            // Fill & Sign ▸ Stamps: the palette itself rather than its one catalogue row, at the
+            // list's own width (the signature cards above widen the ui to fit their previews).
+            if fill_sign && s.items.iter().any(|item| item.command == "comment.stamp") {
+                ui.allocate_ui_with_layout(vec2(width, 0.0), Layout::top_down(Align::Min), |ui| {
+                    stamp_palette(app, ui, t, s.title);
+                });
+                continue;
+            }
             widgets::section_title(ui, tl!(s.title));
             for item in s.items {
-                if g.id == "fill_sign" && (item.command.starts_with("sign.fill.signature") || item.command.starts_with("sign.fill.initials")) {
+                if fill_sign && (item.command.starts_with("sign.fill.signature") || item.command.starts_with("sign.fill.initials")) {
                     continue;
                 }
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), Sense::click());
@@ -234,11 +245,12 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
                     run = Some(item.command);
                 }
             }
-        }
-        if g.id == "fill_sign" {
-            widgets::section_title(ui, tl!("Sign yourself"));
-            if let Some(cmd) = crate::fill_sign::signature_entries(ui, app, t) {
-                run = Some(cmd);
+            // The saved signature and initials follow the marks they are hidden from.
+            if fill_sign && s.items.iter().any(|item| item.command.starts_with("sign.fill.")) {
+                widgets::section_title(ui, tl!("Sign yourself"));
+                if let Some(cmd) = crate::fill_sign::signature_entries(ui, app, t) {
+                    run = Some(cmd);
+                }
             }
         }
     });
@@ -270,74 +282,76 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
     }
 }
 
-/// Add a stamp: Dynamic, Sign Here and Standard Business stamps; click one, then click on the
-/// page to place it.
-fn stamp_palette(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+/// Fill & Sign ▸ Stamps: Dynamic, Sign Here, Standard Business and custom stamps; click one,
+/// then click on the page to place it. It draws inside the panel's scroll area, and scrolls it to
+/// the stamps when Add a stamp asked for them.
+fn stamp_palette(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, title: &str) {
     use pdfcraft_engine::{StampGroup, StampKind};
+    // A jump, not a glide: the panel has only just opened.
+    if std::mem::take(&mut app.reveal_stamps) {
+        ui.scroll_to_cursor_animation(Some(Align::Min), egui::style::ScrollAnimation::none());
+    }
+    widgets::section_title(ui, tl!(title));
     ui.label(egui::RichText::new(tl!("Choose a stamp, then click on the page to place it.")).small().color(t.text_faint));
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        for (group, title) in [
-            (StampGroup::Dynamic, tl!("Dynamic")),
-            (StampGroup::SignHere, tl!("Sign Here")),
-            (StampGroup::StandardBusiness, tl!("Standard Business")),
-        ] {
-            widgets::section_title(ui, title);
-            for kind in StampKind::ALL.into_iter().filter(|k| k.group() == group) {
-                let active = app.quick_tool == crate::QuickTool::Stamp(kind);
-                let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 38.0), Sense::click());
-                resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, active, kind.label()));
-                let press = theme::Press::track(ui, &resp);
-                press.wash(ui, rect, 6, active);
-                let body = rect.translate(press.offset());
-                let [r, g, b] = kind.color().map(|v| (v * 255.0) as u8);
-                let col = Color32::from_rgb(r, g, b);
-                let chip = Rect::from_min_size(body.min + vec2(8.0, 5.0), vec2((rect.width() - 16.0).min(200.0), 28.0));
-                if group == StampGroup::SignHere {
-                    let tip = chip.height() * 0.45;
-                    let pts = vec![
-                        chip.left_center(),
-                        chip.left_top() + vec2(tip, 0.0),
-                        chip.right_top(),
-                        chip.right_bottom(),
-                        chip.left_bottom() + vec2(tip, 0.0),
-                    ];
-                    ui.painter().add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
-                    let label = kind.label();
-                    let font = theme::semibold(11.0);
-                    let shown = crate::widgets::fit_line(label, (chip.width() - 10.0).max(0.0), |s| crate::widgets::text_width(ui, s, &font));
-                    ui.painter().with_clip_rect(chip.shrink(3.0)).text(
-                        chip.center() + vec2(tip / 2.0, 0.0),
+    for (group, name) in
+        [(StampGroup::Dynamic, tl!("Dynamic")), (StampGroup::SignHere, tl!("Sign Here")), (StampGroup::StandardBusiness, tl!("Standard Business"))]
+    {
+        widgets::subsection_title(ui, name);
+        for kind in StampKind::ALL.into_iter().filter(|k| k.group() == group) {
+            let active = app.quick_tool == crate::QuickTool::Stamp(kind);
+            let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 38.0), Sense::click());
+            resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, active, kind.label()));
+            let press = theme::Press::track(ui, &resp);
+            press.wash(ui, rect, 6, active);
+            let body = rect.translate(press.offset());
+            let [r, g, b] = kind.color().map(|v| (v * 255.0) as u8);
+            let col = Color32::from_rgb(r, g, b);
+            let chip = Rect::from_min_size(body.min + vec2(8.0, 5.0), vec2((rect.width() - 16.0).min(200.0), 28.0));
+            if group == StampGroup::SignHere {
+                let tip = chip.height() * 0.45;
+                let pts = vec![
+                    chip.left_center(),
+                    chip.left_top() + vec2(tip, 0.0),
+                    chip.right_top(),
+                    chip.right_bottom(),
+                    chip.left_bottom() + vec2(tip, 0.0),
+                ];
+                ui.painter().add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
+                let label = kind.label();
+                let font = theme::semibold(11.0);
+                let shown = crate::widgets::fit_line(label, (chip.width() - 10.0).max(0.0), |s| crate::widgets::text_width(ui, s, &font));
+                ui.painter().with_clip_rect(chip.shrink(3.0)).text(
+                    chip.center() + vec2(tip / 2.0, 0.0),
+                    Align2::CENTER_CENTER,
+                    shown,
+                    font,
+                    Color32::WHITE,
+                );
+            } else {
+                ui.painter().rect(chip, CornerRadius::same(5), col.gamma_multiply(0.1), Stroke::new(1.5, col), egui::StrokeKind::Inside);
+                let y = if group == StampGroup::Dynamic { chip.center().y - 4.0 } else { chip.center().y };
+                let font = theme::semibold(11.0);
+                let shown = crate::widgets::fit_line(kind.label(), (chip.width() - 10.0).max(0.0), |s| crate::widgets::text_width(ui, s, &font));
+                ui.painter().with_clip_rect(chip.shrink(3.0)).text(egui::pos2(chip.center().x, y), Align2::CENTER_CENTER, shown, font, col);
+                if group == StampGroup::Dynamic {
+                    let by = "By name at time, date";
+                    let by_font = theme::regular(7.5);
+                    let by_shown = crate::widgets::fit_line(by, (chip.width() - 8.0).max(0.0), |s| crate::widgets::text_width(ui, s, &by_font));
+                    ui.painter().with_clip_rect(chip.shrink(2.0)).text(
+                        egui::pos2(chip.center().x, chip.bottom() - 6.0),
                         Align2::CENTER_CENTER,
-                        shown,
-                        font,
-                        Color32::WHITE,
+                        by_shown,
+                        by_font,
+                        col,
                     );
-                } else {
-                    ui.painter().rect(chip, CornerRadius::same(5), col.gamma_multiply(0.1), Stroke::new(1.5, col), egui::StrokeKind::Inside);
-                    let y = if group == StampGroup::Dynamic { chip.center().y - 4.0 } else { chip.center().y };
-                    let font = theme::semibold(11.0);
-                    let shown = crate::widgets::fit_line(kind.label(), (chip.width() - 10.0).max(0.0), |s| crate::widgets::text_width(ui, s, &font));
-                    ui.painter().with_clip_rect(chip.shrink(3.0)).text(egui::pos2(chip.center().x, y), Align2::CENTER_CENTER, shown, font, col);
-                    if group == StampGroup::Dynamic {
-                        let by = "By name at time, date";
-                        let by_font = theme::regular(7.5);
-                        let by_shown = crate::widgets::fit_line(by, (chip.width() - 8.0).max(0.0), |s| crate::widgets::text_width(ui, s, &by_font));
-                        ui.painter().with_clip_rect(chip.shrink(2.0)).text(
-                            egui::pos2(chip.center().x, chip.bottom() - 6.0),
-                            Align2::CENTER_CENTER,
-                            by_shown,
-                            by_font,
-                            col,
-                        );
-                    }
-                }
-                if theme::hand(resp).clicked() {
-                    app.quick_tool = crate::QuickTool::Stamp(kind);
                 }
             }
+            if theme::hand(resp).clicked() {
+                app.quick_tool = crate::QuickTool::Stamp(kind);
+            }
         }
-        crate::stamps_ui::palette_section(app, ui, t);
-    });
+    }
+    crate::stamps_ui::palette_section(app, ui, t);
 }
 
 /// Edit a PDF ▸ Format text: for the selected added text (one undoable change), or the style

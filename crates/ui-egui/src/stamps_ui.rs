@@ -1,4 +1,4 @@
-//! Custom stamps (Add a stamp ▸ Custom stamps ▸ Create): a PDF page or an image saved in the
+//! Custom stamps (Fill & Sign ▸ Stamps ▸ Custom ▸ Create): a PDF page or an image saved in the
 //! user's stamp library under a category and a name, then placed like any stamp.
 
 use std::sync::Arc;
@@ -97,7 +97,7 @@ pub(crate) fn create_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) 
 
 /// The Custom stamps section of the stamps palette.
 pub(crate) fn palette_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
-    widgets::section_title(ui, tl!("Custom"));
+    widgets::subsection_title(ui, tl!("Custom"));
     let mut remove = None;
     let mut categories: Vec<String> = app.custom_stamps.iter().map(|s| s.category.clone()).collect();
     categories.sort();
